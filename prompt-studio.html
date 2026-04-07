@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Studio</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --text: #f8fafc;
+            --border: #334155;
+            --secondary-text: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* মেইন হেডার স্টাইল */
+        h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 52px; 
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            margin-bottom: 0px;
+            color: var(--accent);
+            font-weight: 400;
+            line-height: 1;
+            text-shadow: 0 4px 10px rgba(56, 189, 248, 0.2);
+        }
+
+        h2 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 8px;
+            margin-bottom: 40px;
+            color: var(--secondary-text);
+            font-weight: 600;
+            opacity: 0.8;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            width: 100%;
+            max-width: 450px;
+        }
+
+        /* ইমেজ কার্ড ডিজাইন আপডেট */
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+        }
+
+        .card img {
+            width: 100%;
+            height: auto;
+            display: block;
+            background-color: #000;
+        }
+
+        .info-box {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0) 0%, rgba(15, 23, 42, 0.5) 100%);
+        }
+
+        /* ইমেজ টাইটেল আপডেট */
+        .title-text {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.8rem;
+            letter-spacing: 2px;
+            color: var(--text);
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        /* কপি বাটন আপডেট */
+        .copy-btn {
+            background: transparent;
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            border-radius: 12px;
+            width: 100%;
+            transition: all 0.3s ease;
+            font-family: 'Poppins', sans-serif;
+            letter-spacing: 1px;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent);
+            color: var(--bg);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+
+        .copy-btn:active {
+            transform: scale(0.95);
+        }
+
+        .copied {
+            background: #22c55e !important;
+            border-color: #22c55e !important;
+            color: white !important;
+        }
+
+        #gallery:empty { display: none; }
+    </style>
+</head>
+<body>
+
+    <h1>PROMPT STUDIO</h1>
+    <h2>BY JRN</h2>
+
+    <div class="container" id="gallery">
+        <!-- কন্টেন্ট লোড হবে -->
+    </div>
+
+    <script>
+        const sheetID = '15wUCjsVJRv7R8wT4xrd9e3xV5UWhub04suXCfK8lFik';
+        const url = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:json`;
+
+        async function loadData() {
+            try {
+                const response = await fetch(url);
+                const data = await response.text();
+                const json = JSON.parse(data.substr(47).slice(0, -2));
+                const rows = json.table.rows;
+                
+                const reversedRows = [...rows].reverse();
+                
+                let html = '';
+                reversedRows.forEach((row) => {
+                    if (!row.c || !row.c[2] || !row.c[2].v || row.c[2].v === "" || row.c[2].v === "ImageURL") {
+                        return;
+                    }
+
+                    const title = row.c[0] ? row.c[0].v : 'UNNAMED ART';
+                    const promptRaw = row.c[1] ? row.c[1].v : '';
+                    const promptEncoded = btoa(unescape(encodeURIComponent(promptRaw)));
+
+                    let img = row.c[2].v;
+
+                    if (img.includes("drive.google.com")) {
+                        let fileId = "";
+                        if (img.includes("/d/")) {
+                            fileId = img.split('/d/')[1].split('/')[0];
+                        } else if (img.includes("id=")) {
+                            fileId = img.split('id=')[1].split('&')[0];
+                        }
+                        img = `https://lh3.googleusercontent.com/d/${fileId}`;
+                    }
+
+                    html += `
+                        <div class="card">
+                            <img src="${img}" alt="${title}" onerror="this.style.display='none'">
+                            <div class="info-box">
+                                <div class="title-text">${title}</div>
+                                <button class="copy-btn" onclick="copyFromBase64(this, '${promptEncoded}')">Get Prompt</button>
+                            </div>
+                        </div>`;
+                });
+                
+                document.getElementById('gallery').innerHTML = html;
+            } catch (e) {
+                console.error("Error:", e);
+            }
+        }
+
+        function copyFromBase64(button, encodedText) {
+            const decodedText = decodeURIComponent(escape(atob(encodedText)));
+            const textArea = document.createElement("textarea");
+            textArea.value = decodedText;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            textArea.setSelectionRange(0, 99999);
+            try {
+                document.execCommand('copy');
+                const originalText = button.innerText;
+                button.innerText = "✓ COPIED";
+                button.classList.add('copied');
+                setTimeout(() => {
+                    button.innerText = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                alert("Error copying.");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
