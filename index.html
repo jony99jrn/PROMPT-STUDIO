@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Studio</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --text: #f8fafc;
+            --border: #334155;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 26px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 30px;
+            color: var(--accent);
+            font-weight: 800;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .card img {
+            width: 100%;
+            height: auto;
+            display: block;
+            background-color: #000;
+        }
+
+        .info-box {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .title-text {
+            font-size: 1.2rem;
+            font-weight: 600;
+            font-style: italic;
+        }
+
+        .copy-btn {
+            background: var(--accent);
+            color: #0f172a;
+            border: none;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            border-radius: 10px;
+            width: 100%;
+            transition: 0.2s;
+        }
+
+        .copy-btn:active { transform: scale(0.96); }
+
+        .copied {
+            background: #22c55e !important;
+            color: white !important;
+        }
+
+        /* ফাঁকা থাকলে কন্টেইনার হাইড থাকবে */
+        #gallery:empty { display: none; }
+    </style>
+</head>
+<body>
+
+    <h1>PROMPT STUDIO</h1>
+
+    <div class="container" id="gallery">
+        <!-- কার্ডগুলো এখানে লোড হবে -->
+    </div>
+
+    <script>
+        const sheetID = '15wUCjsVJRv7R8wT4xrd9e3xV5UWhub04suXCfK8lFik';
+        const url = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:json`;
+
+        async function loadData() {
+            try {
+                const response = await fetch(url);
+                const data = await response.text();
+                const json = JSON.parse(data.substr(47).slice(0, -2));
+                const rows = json.table.rows;
+                
+                // নতুন আপলোড করা ডেটা উপরে দেখানোর জন্য রিভার্স করা হয়েছে
+                const reversedRows = [...rows].reverse();
+                
+                let html = '';
+                reversedRows.forEach((row) => {
+                    // ভ্যালিডেশন: যদি ইমেজ লিঙ্ক না থাকে অথবা এটি হেডার রো হয় তবে বাদ যাবে
+                    if (!row.c || !row.c[2] || !row.c[2].v || row.c[2].v === "" || row.c[2].v === "ImageURL") {
+                        return; 
+                    }
+
+                    const title = row.c[0] ? row.c[0].v : 'Untitled';
+                    const prompt = row.c[1] ? row.c[1].v : '';
+                    let img = row.c[2].v;
+
+                    // গুগল ড্রাইভ লিঙ্ক কনভার্টার
+                    if (img.includes("drive.google.com")) {
+                        let fileId = "";
+                        if (img.includes("/d/")) {
+                            fileId = img.split('/d/')[1].split('/')[0];
+                        } else if (img.includes("id=")) {
+                            fileId = img.split('id=')[1].split('&')[0];
+                        }
+                        img = `https://lh3.googleusercontent.com/d/${fileId}`;
+                    }
+
+                    html += `
+                        <div class="card">
+                            <img src="${img}" alt="${title}" onerror="this.style.display='none'">
+                            <div class="info-box">
+                                <div class="title-text">${title}</div>
+                                <button class="copy-btn" onclick="copyPrompt(this, \`${prompt.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)">Copy Prompt</button>
+                            </div>
+                        </div>`;
+                });
+                
+                document.getElementById('gallery').innerHTML = html;
+            } catch (e) {
+                console.error("Error loading sheet data:", e);
+            }
+        }
+
+        // কপি করার ইউনিভার্সাল মেথড
+        function copyPrompt(button, text) {
+            if (!text) return;
+
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            document.body.appendChild(textArea);
+            
+            textArea.focus();
+            textArea.select();
+            textArea.setSelectionRange(0, 99999);
+
+            try {
+                document.execCommand('copy');
+                const originalText = button.innerText;
+                button.innerText = "✓ COPIED";
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.innerText = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                alert("Manual copy required.");
+            }
+
+            document.body.removeChild(textArea);
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
