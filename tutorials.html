@@ -131,83 +131,84 @@
     <div id="mainContent" style="width: 100%;"></div>
 
     <script>
-        // 1. Google Sheet Connection Details
-        const sheetID = '15wUCjsVJRv7R8wT4xrd9e3xV5UWhub04suXCfK8lFik';
-        const gid = '1164964640'; // Your specific "Tutorials" Sheet ID
-        const url = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:json&gid=${gid}`;
+    // ১. আপনার গুগল শিট আইডি
+    const sheetID = '15wUCjsVJRv7R8wT4xrd9e3xV5UWhub04suXCfK8lFik';
+    
+    // ২. আপনার টিউটোরিয়াল সাব-শিটের সঠিক GID (এটি নিশ্চিত করবে যে Sheet 1 এর ডেটা এখানে আসবে না)
+    const gid = '1164964640'; 
 
-        // 2. Function to Extract Video ID from ANY YouTube link
-        function getYoutubeID(url) {
-            if (!url) return '';
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            const match = url.match(regExp);
-            return (match && match[2].length === 11) ? match[2] : url;
+    // ৩. নির্দিষ্ট পাতার জন্য URL ফরম্যাট
+    const url = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:json&gid=${gid}`;
+
+    // লিঙ্ক কনভার্টার (ইউটিউব এবং ড্রাইভের জন্য)
+    function convertToEmbedLink(rawUrl) {
+        if (!rawUrl) return '';
+        
+        // ইউটিউব চেকার
+        const ytReg = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const ytMatch = rawUrl.match(ytReg);
+        if (ytMatch && ytMatch[2].length === 11) {
+            return `https://www.youtube.com/embed/${ytMatch[2]}`;
         }
 
-        async function loadData() {
-            try {
-                const response = await fetch(url);
-                const data = await response.text();
-                const json = JSON.parse(data.substr(47).slice(0, -2));
-                const rows = json.table.rows;
-                
-                const mainContent = document.getElementById('mainContent');
-                const projects = {}; // This will hold grouped videos
-
-                // 3. Process each row
-                rows.forEach((row, index) => {
-                    // Skip the first row (Header row)
-                    if (index === 0) return;
-
-                    // Ensure Column B (Link) exists
-                    if (!row.c || !row.c[1] || !row.c[1].v) return;
-
-                    const title = row.c[0] ? row.c[0].v : 'Untitled Tutorial';
-                    const videoRaw = row.c[1].v;
-                    const videoId = getYoutubeID(videoRaw);
-                    const projectName = row.c[2] ? row.c[2].v.toUpperCase() : 'MISC TUTORIALS';
-
-                    // Grouping videos by Project Name (Column C)
-                    if (!projects[projectName]) {
-                        projects[projectName] = [];
-                    }
-                    projects[projectName].push({ title, videoId });
-                });
-
-                document.getElementById('loader').style.display = 'none';
-                
-                let finalHTML = '';
-                
-                // 4. Generate HTML for each Project Section
-                for (const sectionName in projects) {
-                    finalHTML += `
-                        <div class="project-section">
-                            <div class="section-title">${sectionName}</div>
-                            <div class="video-grid">
-                                ${projects[sectionName].map(vid => `
-                                    <div class="video-card">
-                                        <div class="video-wrapper">
-                                            <iframe src="https://www.youtube.com/embed/${vid.videoId}?rel=0&modestbranding=1" allowfullscreen></iframe>
-                                        </div>
-                                        <div class="info-box">
-                                            <div class="video-title">${vid.title}</div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }
-
-                mainContent.innerHTML = finalHTML;
-
-            } catch (e) {
-                console.error("Data Fetch Error:", e);
-                document.getElementById('loader').innerText = "FAILED TO CONNECT TO DATABASE.";
+        // গুগল ড্রাইভ চেকার
+        if (rawUrl.includes('drive.google.com')) {
+            const dMatch = rawUrl.match(/\/d\/(.+?)\/(view|edit)?/);
+            if (dMatch && dMatch[1]) {
+                return `https://drive.google.com/file/d/${dMatch[1]}/preview`;
             }
         }
+        return rawUrl;
+    }
 
-        window.onload = loadData;
-    </script>
+    async function loadTutorials() {
+        try {
+            // ক্যাশ সমস্যা এড়াতে ?v= যোগ করা হয়েছে
+            const response = await fetch(url + '&v=' + Date.now());
+            const data = await response.text();
+            
+            // গুগল শিটের ডেটা ক্লিন করা
+            const json = JSON.parse(data.substr(47).slice(0, -2));
+            const rows = json.table.rows;
+            
+            const mainContent = document.getElementById('mainContent');
+            const projects = {};
+
+            rows.forEach((row, index) => {
+                if (index === 0 || !row.c[1]) return; // হেডার এবং খালি লিঙ্ক বাদ
+
+                const title = row.c[0] ? row.c[0].v : 'Untitled';
+                const embedLink = convertToEmbedLink(row.c[1].v);
+                const group = row.c[2] ? row.c[2].v.toUpperCase() : 'GENERAL';
+
+                if (!projects[group]) projects[group] = [];
+                projects[group].push({ title, embedLink });
+            });
+
+            document.getElementById('loader').style.display = 'none';
+            
+            let html = '';
+            for (const section in projects) {
+                html += `<div class="section-title">${section}</div><div class="video-grid">`;
+                html += projects[section].map(vid => `
+                    <div class="video-card">
+                        <div class="video-wrapper">
+                            <iframe src="${vid.embedLink}" allowfullscreen></iframe>
+                        </div>
+                        <div class="info"><p class="video-title">${vid.title}</p></div>
+                    </div>
+                `).join('');
+                html += `</div>`;
+            }
+            mainContent.innerHTML = html;
+
+        } catch (e) {
+            console.error(e);
+            document.getElementById('loader').innerText = "ডেটা লোড করতে সমস্যা হয়েছে।";
+        }
+    }
+
+    window.onload = loadTutorials;
+</script>
 </body>
 </html>
