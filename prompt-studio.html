@@ -48,16 +48,16 @@
             font-weight: 600;
         }
 
-        /* --- Video Section --- */
+        /* --- Updated Landscape Video Section --- */
         .video-section {
             width: 100%;
-            max-width: 450px;
-            margin-bottom: 30px;
+            max-width: 600px; /* ডেস্কটপে একটু চওড়া দেখাবে */
+            margin-bottom: 10px;
         }
 
         .video-container {
             position: relative;
-            padding-bottom: 177.77%; /* Shorts/Vertical Video Ratio (9:16) */
+            padding-bottom: 56.25%; /* Landscape Ratio (16:9) */
             height: 0;
             overflow: hidden;
             border-radius: 20px;
@@ -73,12 +73,22 @@
             height: 100%;
         }
 
+        .tutorial-hint {
+            font-size: 13px;
+            color: var(--accent);
+            margin-bottom: 40px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        /* --- Responsive Gallery Grid --- */
         .container {
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
+            display: grid;
+            /* অটোমেটিক কলাম তৈরি করবে: মোবাইলে ১টি, ডেস্কটপে ২-৩টি */
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
             width: 100%;
-            max-width: 450px;
+            max-width: 1200px; /* ডেস্কটপে গ্রিডের সর্বোচ্চ চওড়া */
         }
 
         .card {
@@ -86,7 +96,8 @@
             border-radius: 20px;
             overflow: hidden;
             border: 1px solid var(--border);
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+            height: fit-content;
         }
 
         .card:hover {
@@ -98,6 +109,7 @@
             width: 100%;
             height: auto;
             display: block;
+            background-color: #000;
         }
 
         .info-box {
@@ -128,6 +140,7 @@
             border-radius: 12px;
             width: 100%;
             transition: all 0.3s ease;
+            font-family: 'Poppins', sans-serif;
         }
 
         .copy-btn:hover {
@@ -142,6 +155,15 @@
         }
 
         #loader { color: var(--secondary-text); margin-bottom: 20px; }
+
+        /* মোবাইল অপ্টিমাইজেশন */
+        @media (max-width: 480px) {
+            .container {
+                max-width: 100%;
+                grid-template-columns: 1fr;
+            }
+            h1 { font-size: 40px; }
+        }
     </style>
 </head>
 <body>
@@ -152,15 +174,20 @@
     <div class="video-section">
         <div class="video-container">
             <iframe 
-                src="https://www.youtube.com/embed/hLLlq4UzHPg?rel=0&modestbranding=1" 
+                src="https://www.youtube.com/embed/_IFRPijPuVc?rel=0&modestbranding=1" 
                 title="Tutorial Video" 
                 frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                 allowfullscreen>
             </iframe>
         </div>
     </div>
+    
+    <div class="tutorial-hint">
+        Tap "Full Screen" to see the tutorial ↗
+    </div>
 
-    <div id="loader">Loading Arts...</div>
+    <div id="loader">Loading Gallery...</div>
 
     <div class="container" id="gallery">
         </div>
@@ -181,6 +208,7 @@
                 
                 let html = '';
                 reversedRows.forEach((row) => {
+                    // ইমেজ ইউআরএল না থাকলে স্কিপ করবে
                     if (!row.c || !row.c[2] || !row.c[2].v || row.c[2].v === "" || row.c[2].v === "ImageURL") return;
 
                     const title = row.c[0] ? row.c[0].v : 'UNNAMED ART';
