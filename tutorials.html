@@ -44,66 +44,74 @@
     <div class="container" id="mainContent"></div>
 
     <script>
-        const sheetID = '15wUCjsVJRv7R8wT4xrd9e3xV5UWhub04suXCfK8lFik';
-        const gid = '1164964640'; // TUTORIALS ট্যাবের GID
-        const url = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:json&gid=${gid}`;
+    const sheetID = '15wUCjsVJRv7R8wT4xrd9e3xV5UWhub04suXCfK8lFik';
+    const gid = '1164964640'; // আপনার ২য় শিটের আইডি
+    
+    // '&t=' + Date.now() যোগ করা হয়েছে যাতে ব্রাউজার জোর করে নতুন ডেটা লোড করে
+    const url = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:json&gid=${gid}&t=${Date.now()}`;
 
-        // ইউটিউব এবং গুগল ড্রাইভ কনভার্টার
-        function getEmbedUrl(raw) {
-            if (!raw) return '';
+    function getEmbedUrl(raw) {
+        if (!raw) return '';
+        const ytMatch = raw.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
+        if (ytMatch && ytMatch[2].length === 11) return `https://www.youtube.com/embed/${ytMatch[2]}`;
+
+        if (raw.includes('drive.google.com')) {
+            const driveId = raw.match(/\/d\/(.+?)\//);
+            if (driveId && driveId[1]) return `https://drive.google.com/file/d/${driveId[1].split(/[?&]/)[0]}/preview`;
+        }
+        return raw;
+    }
+
+    async function init() {
+        try {
+            const res = await fetch(url);
+            const text = await res.text();
+            // গুগল শিটের রেসপন্স থেকে অপ্রয়োজনীয় টেক্সট বাদ দেওয়া
+            const json = JSON.parse(text.substring(text.indexOf("(") + 1, text.lastIndexOf(")")));
+            const rows = json.table.rows;
             
-            // YouTube Handler
-            const ytMatch = raw.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
-            if (ytMatch && ytMatch[2].length === 11) return `https://www.youtube.com/embed/${ytMatch[2]}`;
+            const container = document.getElementById('mainContent');
+            const groups = {};
 
-            // Google Drive Handler (Fixes 404/Bad Request)
-            if (raw.includes('drive.google.com')) {
-                const driveId = raw.match(/\/d\/(.+?)\//);
-                if (driveId && driveId[1]) return `https://drive.google.com/file/d/${driveId[1]}/preview`;
-            }
-            return raw;
-        }
-
-        async function init() {
-            try {
-                const res = await fetch(url);
-                const text = await res.text();
-                const json = JSON.parse(text.substr(47).slice(0, -2));
-                const rows = json.table.rows;
+            rows.forEach((row, i) => {
+                // ১ম রো হেডার হলে সেটি এড়িয়ে চলা
+                if (i === 0) return;
                 
-                const container = document.getElementById('mainContent');
-                const groups = {};
+                // কলাম অনুযায়ী ডাটা রিড করা
+                const title = row.c[0] ? row.c[0].v : 'Untitled Video';
+                const link = row.c[1] ? row.c[1].v : null;
+                const project = row.c[2] ? row.c[2].v : 'OTHERS';
 
-                rows.forEach((row, i) => {
-                    if (i === 0 || !row.c[1]) return; // ১ম রো বাদ
-                    
-                    const title = row.c[0]?.v || 'No Title';
-                    const link = getEmbedUrl(row.c[1]?.v);
-                    const project = row.c[2]?.v || 'OTHERS';
-
+                if (link) {
                     if (!groups[project]) groups[project] = [];
-                    groups[project].push({ title, link });
-                });
-
-                document.getElementById('loader').style.display = 'none';
-                
-                let html = '';
-                for (const key in groups) {
-                    html += `<div class="group-title">${key}</div><div class="video-grid">`;
-                    html += groups[key].map(v => `
-                        <div class="card">
-                            <div class="video-box"><iframe src="${v.link}" allowfullscreen></iframe></div>
-                            <div class="info"><p class="v-title">${v.title}</p></div>
-                        </div>
-                    `).join('');
-                    html += `</div>`;
+                    groups[project].push({ title, link: getEmbedUrl(link) });
                 }
-                container.innerHTML = html;
-            } catch (err) {
-                document.getElementById('loader').innerHTML = "FAILED TO LOAD DATA";
+            });
+
+            document.getElementById('loader').style.display = 'none';
+            
+            let html = '';
+            for (const key in groups) {
+                html += `<div class="project-section">
+                            <div class="section-title">${key}</div>
+                            <div class="video-grid">`;
+                html += groups[key].map(v => `
+                    <div class="video-card">
+                        <div class="video-wrapper">
+                            <iframe src="${v.link}" allowfullscreen></iframe>
+                        </div>
+                        <div class="info-box"><p class="video-title">${v.title}</p></div>
+                    </div>
+                `).join('');
+                html += `</div></div>`;
             }
+            container.innerHTML = html;
+        } catch (err) {
+            console.error(err);
+            document.getElementById('loader').innerHTML = "ERROR: COULD NOT LOAD TUTORIALS DATA";
         }
-        init();
-    </script>
+    }
+    init();
+</script>
 </body>
 </html>
