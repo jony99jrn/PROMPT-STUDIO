@@ -1,5 +1,5 @@
 // --- JRN AI CHATBOT SYSTEM (SECURED WITH BASE64) ---
-const encodedKey = "QUl6YVN5QjVteGxSQnF5enYtcmxVQUJsRkRGS2pxNXBqTEFLVVBR";
+const encodedKey = "QUl6YVN5QVM3b0dDYk0tRHFPYmlvMmU5Rnh5UjVyWm11MG1Cbjdz";
 const GEMINI_API_KEY = atob(encodedKey);
 
 // ১. চ্যাটবট UI বডিতে ইনজেক্ট করা
